@@ -1,55 +1,41 @@
-import nodemailer from "nodemailer";
-import { config } from "../config/config.js";
+import nodemailer from 'nodemailer';
+import config from '../config/config.js';
 
-let transporter;
 
-if (config.email.clientId && config.email.clientSecret) {
-    // OAuth2 configuration (likely for Gmail)
-    transporter = nodemailer.createTransport({
-        service: "gmail",
-        auth: {
-            type: "OAuth2",
-            user: config.email.user,
-            clientId: config.email.clientId,
-            clientSecret: config.email.clientSecret,
-            refreshToken: config.email.refreshToken,
-        }
-    });
-} else {
-    // Standard SMTP configuration (e.g., Ethereal, SendGrid)
-    transporter = nodemailer.createTransport({
-        host: config.email.host || "smtp.ethereal.email",
-        port: config.email.port || 587,
-        secure: config.email.port == 465,
-        auth: {
-            user: config.email.user,
-            pass: config.email.password
-        }
-    });
-}
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        type: 'OAuth2',
+        user: config.GOOGLE_USER,
+        clientId: config.GOOGLE_CLIENT_ID,
+        clientSecret: config.GOOGLE_CLIENT_SECRET,
+        refreshToken: config.GOOGLE_REFRESH_TOKEN
+    }
+})
 
-export const sendEmail = async (to, subject, html) => {
+
+// Verify the connection configuration
+transporter.verify((error, success) => {
+    if (error) {
+        console.error('Error connecting to email server:', error);
+    } else {
+        console.log('Email server is ready to send messages');
+    }
+});
+
+export const sendEmail = async (to, subject, text, html) => {
     try {
-        const mailOptions = {
-            from: `"Auth System" <${config.email.user || "no-reply@authsystem.com"}>`,
-            to,
-            subject,
-            html
-        };
+        const info = await transporter.sendMail({
+            from: `"Your Name" <${config.GOOGLE_USER}>`, // sender address
+            to, // list of receivers
+            subject, // Subject line
+            text, // plain text body
+            html, // html body
+        });
 
-        const info = await transporter.sendMail(mailOptions);
-        console.log("Email sent: %s", info.messageId);
-        
-        const previewUrl = nodemailer.getTestMessageUrl(info);
-        if (previewUrl) {
-            console.log("Preview URL: %s", previewUrl);
-        }
-        
-        return info;
+        console.log('Message sent: %s', info.messageId);
+        console.log('Preview URL: %s', nodemailer.getTestMessageUrl(info));
     } catch (error) {
-        console.error("Error sending email:", error);
-        // Don't throw, just log so registration can proceed if email fails in dev
-        // Or throw if you want strict verification
-        // throw error; 
+        console.error('Error sending email:', error);
     }
 };
